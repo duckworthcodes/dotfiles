@@ -1,0 +1,111 @@
+* {
+    font-family: "JetBrainsMono Nerd Font", "MesloLGS Nerd Font", sans-serif;
+    font-size: 13px;
+    border: none;
+    border-radius: 0;
+    min-height: 0;
+}
+
+window#waybar {
+    background: transparent;
+    color: #f0d5a8;
+}
+
+/* every module is a floating pill */
+#workspaces,
+#window,
+#clock,
+#tray,
+#pulseaudio,
+#network,
+#cpu,
+#memory,
+#battery {
+    background: rgba(59, 34, 38, 0.88);
+    color: #f0d5a8;
+    padding: 0 14px;
+    margin: 4px 3px;
+    border-radius: 12px;
+    border: 1px solid rgba(249, 69, 85, 0.25);
+}
+
+/* workspaces */
+#workspaces {
+    padding: 0 4px;
+}
+
+#workspaces button {
+    color: #c9a27a;
+    padding: 0 9px;
+    margin: 3px 2px;
+    border-radius: 9px;
+    background: transparent;
+}
+
+#workspaces button:hover {
+    background: rgba(249, 69, 85, 0.25);
+    color: #f0d5a8;
+}
+
+#workspaces button.active {
+    background: #f94555;
+    color: #3b2226;
+    font-weight: bold;
+}
+
+#workspaces button.urgent {
+    background: #e0193c;
+    color: #f0d5a8;
+}
+
+/* window title */
+#window {
+    color: #c9a27a;
+}
+
+window#waybar.empty #window {
+    background: transparent;
+    border: none;
+}
+
+/* clock gets the accent */
+#clock {
+    color: #f94555;
+    font-weight: bold;
+}
+
+/* status modules */
+#pulseaudio { color: #f0d5a8; }
+#network    { color: #f0d5a8; }
+#cpu        { color: #c9a27a; }
+#memory     { color: #c9a27a; }
+
+#pulseaudio.muted,
+#network.disconnected {
+    color: #f94555;
+}
+
+#battery.charging,
+#battery.plugged {
+    color: #f0d5a8;
+}
+
+#battery.warning:not(.charging) {
+    color: #c9a27a;
+    border-color: rgba(201, 162, 122, 0.6);
+}
+
+#battery.critical:not(.charging) {
+    background: #e0193c;
+    color: #f0d5a8;
+}
+
+tooltip {
+    background: rgba(59, 34, 38, 0.95);
+    border: 1px solid #f94555;
+    border-radius: 10px;
+}
+
+tooltip label {
+    color: #f0d5a8;
+}
