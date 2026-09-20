@@ -37,6 +37,8 @@ hl.on("hyprland.start", function ()
 
     -- notifications, bar
     hl.exec_cmd("mako")
+    hl.exec_cmd("wl-paste --type text --watch cliphist store")
+    hl.exec_cmd("wl-paste --type image --watch cliphist store")
     hl.exec_cmd("hypridle")
     hl.exec_cmd("waybar")
 
@@ -216,6 +218,7 @@ hl.bind(mainMod .. " + Space",  hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + R",      hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + L",      hl.dsp.exec_cmd("hyprlock"))
 hl.bind(mainMod .. " + N",      hl.dsp.exec_cmd("makoctl dismiss"))
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd([=[cliphist list | fuzzel --dmenu | cliphist decode | wl-copy]=]))
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd("pkill wlogout || wlogout -b 5 -T 320 -B 320"))
 
 -- Windows
