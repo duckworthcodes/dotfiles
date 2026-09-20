@@ -1,0 +1,4 @@
+#!/bin/sh
+mkdir -p "$HOME/Pictures/Screenshots"
+region=$(slurp) || exit 0
+grim -g "$region" - | satty --filename - --output-filename "$HOME/Pictures/Screenshots/annotated-%Y-%m-%d_%H-%M-%S.png" --copy-command wl-copy --early-exit --actions-on-enter save-to-clipboard
