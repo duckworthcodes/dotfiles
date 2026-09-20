@@ -9,7 +9,7 @@
 
     "modules-left": ["hyprland/workspaces", "hyprland/window"],
     "modules-center": ["clock"],
-    "modules-right": ["tray", "pulseaudio", "network", "cpu", "memory", "battery"],
+    "modules-right": ["tray", "pulseaudio", "network", "cpu", "memory", "battery", "custom/power"],
 
     "hyprland/workspaces": {
         "format": "{id}",
@@ -66,5 +66,11 @@
         "format-charging": "\uf0e7  {capacity}%",
         "format-plugged": "\uf0e7  {capacity}%",
         "format-icons": ["\uf244", "\uf243", "\uf242", "\uf241", "\uf240"]
+    },
+
+    "custom/power": {
+        "format": "\uf011",
+        "tooltip": false,
+        "on-click": "pkill wlogout || wlogout -b 5 -T 320 -B 320"
     }
 }

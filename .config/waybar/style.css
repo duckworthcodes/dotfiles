@@ -20,7 +20,8 @@ window#waybar {
 #network,
 #cpu,
 #memory,
-#battery {
+#battery,
+#custom-power {
     background: rgba(59, 34, 38, 0.88);
     color: #f0d5a8;
     padding: 0 14px;
@@ -98,6 +99,17 @@ window#waybar.empty #window {
 #battery.critical:not(.charging) {
     background: #e0193c;
     color: #f0d5a8;
+}
+
+/* power button */
+#custom-power {
+    color: #f94555;
+    padding: 0 13px;
+}
+
+#custom-power:hover {
+    background: #f94555;
+    color: #3b2226;
 }
 
 tooltip {
