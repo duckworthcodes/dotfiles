@@ -8,7 +8,7 @@
     "spacing": 0,
 
     "modules-left": ["hyprland/workspaces", "hyprland/window"],
-    "modules-center": ["clock"],
+    "modules-center": ["mpris", "clock"],
     "modules-right": ["tray", "pulseaudio", "network", "cpu", "memory", "battery", "custom/power"],
 
     "hyprland/workspaces": {
@@ -21,6 +21,22 @@
         "format": "{title}",
         "max-length": 40,
         "separate-outputs": true
+    },
+
+    "mpris": {
+        "format": "{player_icon}  {dynamic}",
+        "format-paused": "{status_icon}  {dynamic}",
+        "dynamic-order": ["title", "artist"],
+        "dynamic-separator": "  -  ",
+        "max-length": 45,
+        "player-icons": {
+            "default": "\uf001",
+            "spotify": "\uf1bc"
+        },
+        "status-icons": {
+            "paused": "\uf04c"
+        },
+        "tooltip-format": "{player}: {title} - {artist}"
     },
 
     "clock": {

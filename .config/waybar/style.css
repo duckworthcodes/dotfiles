@@ -14,6 +14,7 @@ window#waybar {
 /* every module is a floating pill */
 #workspaces,
 #window,
+#mpris,
 #clock,
 #tray,
 #pulseaudio,
@@ -67,6 +68,16 @@ window#waybar {
 window#waybar.empty #window {
     background: transparent;
     border: none;
+}
+
+/* music pill */
+#mpris {
+    color: #f94555;
+}
+
+#mpris.paused {
+    color: #c9a27a;
+    border-color: rgba(201, 162, 122, 0.35);
 }
 
 /* clock gets the accent */
