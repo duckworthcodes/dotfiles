@@ -218,7 +218,8 @@ hl.bind(mainMod .. " + Space",  hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + R",      hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + L",      hl.dsp.exec_cmd("hyprlock"))
 hl.bind(mainMod .. " + N",      hl.dsp.exec_cmd("makoctl dismiss"))
-hl.bind(mainMod .. " + C", hl.dsp.exec_cmd([=[cliphist list | fuzzel --dmenu | cliphist decode | wl-copy]=]))
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/clip-menu"))
+hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/clip-menu"))
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd("pkill wlogout || wlogout -b 5 -T 320 -B 320"))
 
 -- Windows
