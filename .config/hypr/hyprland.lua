@@ -55,6 +55,7 @@ end)
 -------------------------------
 
 hl.env("XCURSOR_SIZE", "24")
+hl.env("XCURSOR_THEME", "Bibata-Modern-Classic")
 hl.env("HYPRCURSOR_SIZE", "24")
 
 -- make Qt apps (Dolphin etc.) follow your KDE theme

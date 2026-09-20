@@ -1,0 +1,29 @@
+/* Crimson palette for GTK4 / libadwaita apps */
+@define-color accent_color #f94555;
+@define-color accent_bg_color #f94555;
+@define-color accent_fg_color #3b2226;
+
+@define-color window_bg_color #2a181c;
+@define-color window_fg_color #f0d5a8;
+
+@define-color view_bg_color #241417;
+@define-color view_fg_color #f0d5a8;
+
+@define-color headerbar_bg_color #3b2226;
+@define-color headerbar_fg_color #f0d5a8;
+@define-color headerbar_border_color #3b2226;
+
+@define-color sidebar_bg_color #2a181c;
+@define-color sidebar_fg_color #f0d5a8;
+
+@define-color card_bg_color #3b2226;
+@define-color card_fg_color #f0d5a8;
+
+@define-color popover_bg_color #3b2226;
+@define-color popover_fg_color #f0d5a8;
+
+@define-color dialog_bg_color #2a181c;
+@define-color dialog_fg_color #f0d5a8;
+
+@define-color destructive_bg_color #e0193c;
+@define-color destructive_fg_color #f0d5a8;
