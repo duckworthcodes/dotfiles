@@ -79,8 +79,8 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(f94555ee)", "rgba(f0d5a8ee)"}, angle = 45 },
-            inactive_border = "rgba(3b222699)",
+            active_border   = { colors = {"rgba(4242faee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            inactive_border = "rgba(23233e99)",
         },
 
         resize_on_border = true,
@@ -220,6 +220,10 @@ hl.bind(mainMod .. " + Space",  hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + R",      hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + L",      hl.dsp.exec_cmd("hyprlock"))
 hl.bind(mainMod .. " + N",      hl.dsp.exec_cmd("makoctl dismiss"))
+hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/theme pick"))
+hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/theme random"))
+hl.bind(mainMod .. " + bracketright", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/theme next"))
+hl.bind(mainMod .. " + bracketleft", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/theme prev"))
 hl.bind("ALT + Print", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/shot-annotate"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/clip-menu"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/clip-menu"))

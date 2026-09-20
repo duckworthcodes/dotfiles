@@ -1,0 +1,882 @@
+#!/usr/bin/env python3
+"""theme: recolor the whole rice from a wallpaper.
+
+  theme <image>            set wallpaper + recolor everything
+  theme pick               thumbnail grid of ~/Pictures/wallpapers, click one to apply
+  theme random             random wallpaper from ~/Pictures/wallpapers
+  theme next | prev        step through ~/Pictures/wallpapers in order
+  theme <image> --dry-run  only print the palette, change nothing
+
+Options: --no-apply  write the files but don't reload apps or set the wallpaper
+"""
+import colorsys
+import fcntl
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+from pathlib import Path
+
+from PIL import Image, ImageOps
+
+HOME = Path(os.environ.get("HOME", str(Path.home())))
+WALLS = HOME / "Pictures" / "MyWalls"
+WALL = HOME / "Pictures" / "wallpaper.jpg"
+BACKUP = HOME / ".config" / "theme" / "backup"
+THUMBS = HOME / ".cache" / "theme" / "thumbs"
+CURRENT = HOME / ".cache" / "theme" / "current"
+LOCK = HOME / ".cache" / "theme" / "lock"
+IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+
+
+# ---------------------------------------------------------------- palette --
+
+def extract(path):
+    img = Image.open(path).convert("RGB")
+    img.thumbnail((200, 200))
+    q = img.quantize(colors=24, method=Image.Quantize.MEDIANCUT)
+    pal = q.getpalette()
+    total = sum(n for n, _ in q.getcolors())
+    out = []
+    for n, idx in sorted(q.getcolors(), reverse=True):
+        out.append(((pal[idx * 3], pal[idx * 3 + 1], pal[idx * 3 + 2]), n / total))
+    return out
+
+
+def hue_dist(a, b):
+    d = abs(a - b) % 1.0
+    return min(d, 1.0 - d)
+
+
+def pick_accent(colors):
+    best, best_score = None, 0.0
+    for (r, g, b), share in colors:
+        h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+        if s < 0.35 or v < 0.35:
+            continue
+        score = (s ** 1.5) * (v ** 0.5) * (share ** 0.4)
+        if score > best_score:
+            best, best_score = (r, g, b), score
+    if best is None:  # very dull image: take the most colorful pixel anyway
+        best = max(colors, key=lambda c: colorsys.rgb_to_hsv(*[x / 255 for x in c[0]])[1])[0]
+    h, l, s = colorsys.rgb_to_hls(*[x / 255 for x in best])
+    return h, min(max(s, 0.60), 0.95)
+
+
+def pick_fg_hue(colors, accent_h):
+    best, best_share = None, 0.0
+    for (r, g, b), share in colors:
+        h, s, v = colorsys.rgb_to_hsv(r / 255, g / 255, b / 255)
+        if v < 0.8 or not (0.25 <= s <= 0.75):
+            continue
+        if hue_dist(h, accent_h) < 0.07:
+            continue
+        if share > best_share:
+            best, best_share = h, share
+    return best if best is not None else 0.10  # warm cream reads well on any dark tint
+
+
+def build_palette(path):
+    colors = extract(path)
+    ha, sa = pick_accent(colors)
+    hf = pick_fg_hue(colors, ha)
+
+    def hls(h, l, s):
+        r, g, b = colorsys.hls_to_rgb(h % 1.0, l, s)
+        return (round(r * 255), round(g * 255), round(b * 255))
+
+    T = {
+        "ACCENT": hls(ha, 0.62, sa),
+        "ACCENT_DARK": hls(ha, 0.48, min(sa, 0.90)),
+        "ACCENT_LIGHT": hls(ha, 0.72, sa),
+        "BG": hls(ha, 0.13, 0.28),
+        "SURFACE": hls(ha, 0.19, 0.27),
+        "SURFACE_HI": hls(ha, 0.30, 0.20),
+        "VIEW": hls(ha, 0.11, 0.30),
+        "CRIT_BG": hls(ha, 0.20, 0.50),
+        "BORDER": hls(ha, 0.25, 0.20),
+        "FG": hls(hf, 0.80, 0.55),
+        "FG_DIM": hls(hf, 0.62, 0.38),
+        "FG_BRIGHT": hls(hf, 0.92, 0.60),
+    }
+    for name, hue in (("GREEN", 0.39), ("YELLOW", 0.115), ("BLUE", 0.57),
+                      ("MAGENTA", 0.90), ("CYAN", 0.47)):
+        T[name] = hls(hue, 0.62, 0.30)
+        T[name + "_BRIGHT"] = hls(hue, 0.74, 0.35)
+    return T
+
+
+def to_hex(c):
+    return "#%02x%02x%02x" % c
+
+
+def render(tpl, T):
+    def sub(m):
+        key = m.group(1)
+        if key in T:
+            return to_hex(T[key])
+        for suffix, fmt in (("_HEX", lambda c: "%02x%02x%02x" % c),
+                            ("_RGB", lambda c: "%d, %d, %d" % c),
+                            ("_SEMI", lambda c: "%d;%d;%d" % c)):
+            if key.endswith(suffix) and key[: -len(suffix)] in T:
+                return fmt(T[key[: -len(suffix)]])
+        raise KeyError("unknown token @%s@" % key)
+
+    return re.sub(r"@([A-Z0-9_]+)@", sub, tpl)
+
+
+# -------------------------------------------------------------- templates --
+
+TEMPLATES = {}
+
+TEMPLATES[".config/waybar/style.css"] = """\
+* {
+    font-family: "JetBrainsMono Nerd Font", "MesloLGS Nerd Font", sans-serif;
+    font-size: 13px;
+    border: none;
+    border-radius: 0;
+    min-height: 0;
+}
+
+window#waybar {
+    background: transparent;
+    color: @FG@;
+}
+
+#workspaces,
+#window,
+#mpris,
+#clock,
+#tray,
+#pulseaudio,
+#network,
+#cpu,
+#memory,
+#battery,
+#custom-power {
+    background: rgba(@SURFACE_RGB@, 0.6);
+    color: @FG@;
+    padding: 0 14px;
+    margin: 4px 3px;
+    border-radius: 12px;
+    border: 1px solid rgba(@ACCENT_RGB@, 0.25);
+}
+
+#workspaces {
+    padding: 0 4px;
+}
+
+#workspaces button {
+    color: @FG_DIM@;
+    padding: 0 9px;
+    margin: 3px 2px;
+    border-radius: 9px;
+    background: transparent;
+}
+
+#workspaces button:hover {
+    background: rgba(@ACCENT_RGB@, 0.25);
+    color: @FG@;
+}
+
+#workspaces button.active {
+    background: @ACCENT@;
+    color: @SURFACE@;
+    font-weight: bold;
+}
+
+#workspaces button.urgent {
+    background: @ACCENT_DARK@;
+    color: @FG@;
+}
+
+#window {
+    color: @FG_DIM@;
+}
+
+window#waybar.empty #window {
+    background: transparent;
+    border: none;
+}
+
+#mpris {
+    color: @ACCENT@;
+}
+
+#mpris.paused {
+    color: @FG_DIM@;
+    border-color: rgba(@FG_DIM_RGB@, 0.35);
+}
+
+#clock {
+    color: @ACCENT@;
+    font-weight: bold;
+}
+
+#pulseaudio { color: @FG@; }
+#network    { color: @FG@; }
+#cpu        { color: @FG_DIM@; }
+#memory     { color: @FG_DIM@; }
+
+#pulseaudio.muted,
+#network.disconnected {
+    color: @ACCENT@;
+}
+
+#battery.charging,
+#battery.plugged {
+    color: @FG@;
+}
+
+#battery.warning:not(.charging) {
+    color: @FG_DIM@;
+    border-color: rgba(@FG_DIM_RGB@, 0.6);
+}
+
+#battery.critical:not(.charging) {
+    background: @ACCENT_DARK@;
+    color: @FG@;
+}
+
+#custom-power {
+    color: @ACCENT@;
+    padding: 0 13px;
+}
+
+#custom-power:hover {
+    background: @ACCENT@;
+    color: @SURFACE@;
+}
+
+tooltip {
+    background: rgba(@SURFACE_RGB@, 0.95);
+    border: 1px solid @ACCENT@;
+    border-radius: 10px;
+}
+
+tooltip label {
+    color: @FG@;
+}
+"""
+
+TEMPLATES[".config/fuzzel/fuzzel.ini"] = """\
+[main]
+font=JetBrainsMono Nerd Font:size=13
+terminal=kitty
+prompt="❯  "
+width=40
+lines=10
+horizontal-pad=24
+vertical-pad=18
+inner-pad=10
+layer=overlay
+exit-on-keyboard-focus-loss=yes
+
+[colors]
+background=@SURFACE_HEX@e6
+text=@FG_HEX@ff
+prompt=@ACCENT_HEX@ff
+placeholder=@FG_DIM_HEX@ff
+input=@FG_HEX@ff
+match=@ACCENT_HEX@ff
+selection=@ACCENT_HEX@ff
+selection-text=@SURFACE_HEX@ff
+selection-match=@SURFACE_HEX@ff
+counter=@FG_DIM_HEX@ff
+border=@ACCENT_HEX@ff
+
+[border]
+width=2
+radius=14
+"""
+
+TEMPLATES[".config/mako/config"] = """\
+font=JetBrainsMono Nerd Font 12
+background-color=@SURFACE@ee
+text-color=@FG@
+border-color=@ACCENT@
+progress-color=over @ACCENT@
+border-size=2
+border-radius=14
+padding=14
+margin=12
+width=360
+height=160
+anchor=top-right
+layer=overlay
+icons=1
+max-icon-size=48
+default-timeout=6000
+ignore-timeout=0
+
+[urgency=low]
+border-color=@FG_DIM@
+default-timeout=4000
+
+[urgency=critical]
+border-color=@ACCENT_DARK@
+background-color=@CRIT_BG@f2
+default-timeout=0
+"""
+
+TEMPLATES[".config/hypr/hyprlock.conf"] = """\
+general {
+    hide_cursor = true
+    ignore_empty_input = true
+}
+
+background {
+    monitor =
+    path = @HOME@/Pictures/wallpaper.jpg
+    blur_passes = 3
+    blur_size = 6
+    brightness = 0.65
+    vibrancy = 0.15
+}
+
+label {
+    monitor =
+    text = cmd[update:1000] echo "$(date +"%I:%M")"
+    color = rgb(@FG_HEX@)
+    font_size = 120
+    font_family = JetBrainsMono Nerd Font
+    position = 0, 170
+    halign = center
+    valign = center
+}
+
+label {
+    monitor =
+    text = cmd[update:60000] echo "$(date +"%A, %d %B")"
+    color = rgb(@ACCENT_HEX@)
+    font_size = 22
+    font_family = JetBrainsMono Nerd Font
+    position = 0, 70
+    halign = center
+    valign = center
+}
+
+label {
+    monitor =
+    text = hi, $USER
+    color = rgb(@FG_DIM_HEX@)
+    font_size = 16
+    font_family = JetBrainsMono Nerd Font
+    position = 0, -60
+    halign = center
+    valign = center
+}
+
+input-field {
+    monitor =
+    size = 320, 56
+    outline_thickness = 2
+    dots_size = 0.25
+    dots_spacing = 0.3
+    dots_center = true
+    outer_color = rgb(@ACCENT_HEX@)
+    inner_color = rgba(@SURFACE_HEX@dd)
+    font_color = rgb(@FG_HEX@)
+    check_color = rgb(@FG_HEX@)
+    fail_color = rgb(@ACCENT_DARK_HEX@)
+    fail_text = <i>wrong password ($ATTEMPTS)</i>
+    placeholder_text = <span foreground="##@FG_DIM_HEX@">password...</span>
+    fade_on_empty = false
+    rounding = 16
+    position = 0, -130
+    halign = center
+    valign = center
+}
+"""
+
+TEMPLATES[".config/wlogout/style.css"] = """\
+* {
+    background-image: none;
+    font-family: "JetBrainsMono Nerd Font", "MesloLGS Nerd Font", sans-serif;
+    font-size: 16px;
+}
+
+window {
+    background-color: rgba(@BG_RGB@, 0.88);
+}
+
+button {
+    color: @FG@;
+    background-color: @SURFACE@;
+    border: 2px solid rgba(@ACCENT_RGB@, 0.30);
+    border-radius: 24px;
+    margin: 20px;
+    background-repeat: no-repeat;
+    background-position: center 38%;
+    background-size: 26%;
+    padding-top: 90px;
+}
+
+button:focus,
+button:hover {
+    background-color: @ACCENT@;
+    color: @SURFACE@;
+    border-color: @FG@;
+}
+
+#lock {
+    background-image: image(url("/usr/share/wlogout/icons/lock.png"));
+}
+
+#logout {
+    background-image: image(url("/usr/share/wlogout/icons/logout.png"));
+}
+
+#suspend {
+    background-image: image(url("/usr/share/wlogout/icons/suspend.png"));
+}
+
+#reboot {
+    background-image: image(url("/usr/share/wlogout/icons/reboot.png"));
+}
+
+#shutdown {
+    background-image: image(url("/usr/share/wlogout/icons/shutdown.png"));
+}
+"""
+
+TEMPLATES[".config/kitty/colors.conf"] = """\
+# generated by `theme`, included at the end of kitty.conf
+foreground            @FG@
+background            @BG@
+selection_foreground  @SURFACE@
+selection_background  @ACCENT@
+url_color             @ACCENT@
+cursor                @ACCENT@
+cursor_text_color     @SURFACE@
+
+color0  @SURFACE@
+color8  @SURFACE_HI@
+color1  @ACCENT@
+color9  @ACCENT_LIGHT@
+color2  @GREEN@
+color10 @GREEN_BRIGHT@
+color3  @YELLOW@
+color11 @YELLOW_BRIGHT@
+color4  @BLUE@
+color12 @BLUE_BRIGHT@
+color5  @MAGENTA@
+color13 @MAGENTA_BRIGHT@
+color6  @CYAN@
+color14 @CYAN_BRIGHT@
+color7  @FG@
+color15 @FG_BRIGHT@
+
+active_tab_foreground    @SURFACE@
+active_tab_background    @ACCENT@
+inactive_tab_foreground  @FG_DIM@
+inactive_tab_background  @SURFACE@
+tab_bar_background       @BG@
+"""
+
+TEMPLATES[".config/fastfetch/config.jsonc"] = """\
+{
+    "logo": {
+        "type": "small",
+        "color": {
+            "1": "38;2;@ACCENT_SEMI@",
+            "2": "38;2;@FG_SEMI@"
+        },
+        "padding": {
+            "top": 1,
+            "left": 2,
+            "right": 4
+        }
+    },
+    "display": {
+        "separator": "  ",
+        "color": {
+            "keys": "38;2;@ACCENT_SEMI@",
+            "title": "38;2;@FG_SEMI@",
+            "separator": "38;2;@FG_DIM_SEMI@"
+        }
+    },
+    "modules": [
+        "title",
+        "separator",
+        { "type": "os",       "key": "\\uf17c  os" },
+        { "type": "kernel",   "key": "\\uf120  kernel" },
+        { "type": "wm",       "key": "\\uf108  wm" },
+        { "type": "shell",    "key": "\\uf120  shell" },
+        { "type": "packages", "key": "\\uf1b2  pkgs" },
+        { "type": "cpu",      "key": "\\uf2db  cpu" },
+        { "type": "gpu",      "key": "\\uf26c  gpu" },
+        { "type": "memory",   "key": "\\uf1c0  mem" },
+        { "type": "disk",     "key": "\\uf0a0  disk" },
+        { "type": "uptime",   "key": "\\uf017  up" },
+        "break",
+        { "type": "colors", "symbol": "circle" }
+    ]
+}
+"""
+
+TEMPLATES[".config/gtk-4.0/gtk.css"] = """\
+/* generated by `theme` */
+@define-color accent_color @ACCENT@;
+@define-color accent_bg_color @ACCENT@;
+@define-color accent_fg_color @SURFACE@;
+
+@define-color window_bg_color rgba(@BG_RGB@, 0.8);
+@define-color window_fg_color @FG@;
+
+@define-color view_bg_color rgba(@VIEW_RGB@, 0.8);
+@define-color view_fg_color @FG@;
+
+@define-color headerbar_bg_color rgba(@SURFACE_RGB@, 0.85);
+@define-color headerbar_fg_color @FG@;
+@define-color headerbar_border_color @SURFACE@;
+
+@define-color sidebar_bg_color @BG@;
+@define-color sidebar_fg_color @FG@;
+
+@define-color card_bg_color @SURFACE@;
+@define-color card_fg_color @FG@;
+
+@define-color popover_bg_color @SURFACE@;
+@define-color popover_fg_color @FG@;
+
+@define-color dialog_bg_color @BG@;
+@define-color dialog_fg_color @FG@;
+
+@define-color destructive_bg_color @ACCENT_DARK@;
+@define-color destructive_fg_color @FG@;
+"""
+
+TEMPLATES[".config/gtk-3.0/gtk.css"] = """\
+/* generated by `theme` */
+@define-color theme_bg_color @BG@;
+@define-color theme_fg_color @FG@;
+@define-color theme_base_color @VIEW@;
+@define-color theme_text_color @FG@;
+@define-color theme_selected_bg_color @ACCENT@;
+@define-color theme_selected_fg_color @SURFACE@;
+@define-color theme_unfocused_bg_color @BG@;
+@define-color theme_unfocused_fg_color @FG_DIM@;
+@define-color theme_unfocused_base_color @VIEW@;
+@define-color theme_unfocused_text_color @FG_DIM@;
+@define-color theme_unfocused_selected_bg_color @ACCENT_DARK@;
+@define-color theme_unfocused_selected_fg_color @SURFACE@;
+
+@define-color borders @BORDER@;
+@define-color unfocused_borders @BORDER@;
+@define-color insensitive_bg_color @SURFACE@;
+@define-color insensitive_fg_color @SURFACE_HI@;
+@define-color tooltip_bg_color @SURFACE@;
+@define-color tooltip_fg_color @FG@;
+@define-color tooltip_border_color @ACCENT@;
+@define-color link_color @ACCENT@;
+@define-color warning_color @FG_DIM@;
+@define-color error_color @ACCENT_DARK@;
+@define-color success_color @GREEN@;
+"""
+
+TEMPLATES[".config/starship.toml"] = """\
+add_newline = true
+
+format = \"\"\"
+$directory$git_branch$git_status$python$nodejs$cmd_duration
+$character\"\"\"
+
+[directory]
+style = "bold @ACCENT@"
+truncation_length = 3
+truncation_symbol = "…/"
+format = "[$path]($style)[$read_only]($read_only_style) "
+
+[git_branch]
+symbol = "\\ue0a0 "
+style = "@FG_DIM@"
+format = "[$symbol$branch]($style) "
+
+[git_status]
+style = "@FG@"
+format = '([\\[$all_status$ahead_behind\\]]($style) )'
+
+[python]
+symbol = "\\ue73c "
+style = "@GREEN@"
+format = "[$symbol$version]($style) "
+
+[nodejs]
+symbol = "\\ue718 "
+style = "@GREEN@"
+format = "[$symbol$version]($style) "
+
+[cmd_duration]
+min_time = 2000
+style = "@FG_DIM@"
+format = "[took $duration]($style) "
+
+[character]
+success_symbol = "[❯](bold @ACCENT@)"
+error_symbol = "[❯](bold @FG_DIM@)"
+"""
+
+
+TEMPLATES[".config/rofi/wallpaper.rasi"] = """\
+* {
+    background-color: transparent;
+    text-color: @FG@;
+    font: "JetBrainsMono Nerd Font 12";
+}
+
+window {
+    width: 1080px;
+    background-color: @BG@e6;
+    border: 2px;
+    border-color: @ACCENT@;
+    border-radius: 18px;
+    padding: 24px;
+}
+
+mainbox {
+    children: [ inputbar, listview ];
+    spacing: 20px;
+}
+
+inputbar {
+    children: [ prompt, entry ];
+    padding: 12px 16px;
+    spacing: 12px;
+    background-color: @SURFACE@;
+    border-radius: 12px;
+}
+
+prompt {
+    text-color: @ACCENT@;
+}
+
+entry {
+    placeholder: "search wallpapers...";
+    placeholder-color: @FG_DIM@;
+}
+
+listview {
+    columns: 3;
+    lines: 2;
+    fixed-columns: true;
+    spacing: 16px;
+    scrollbar: false;
+}
+
+element {
+    orientation: vertical;
+    padding: 12px;
+    spacing: 8px;
+    border-radius: 14px;
+    background-color: @SURFACE@80;
+}
+
+element selected.normal {
+    background-color: @ACCENT@;
+    text-color: @SURFACE@;
+}
+
+element-icon {
+    size: 280px;
+}
+
+element-text {
+    horizontal-align: 0.5;
+    text-color: inherit;
+}
+"""
+
+
+# ------------------------------------------------------------------ apply --
+
+def backup_once(rel, path):
+    dest = BACKUP / rel
+    if path.exists() and not dest.exists():
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, dest)
+
+
+def write_files(T):
+    T = dict(T)
+    written = []
+    for rel, tpl in TEMPLATES.items():
+        text = render(tpl.replace("@HOME@", str(HOME)), T)
+        path = HOME / rel
+        backup_once(rel, path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+        written.append(rel)
+
+    # kitty: make sure colors.conf is included
+    kconf = HOME / ".config/kitty/kitty.conf"
+    if kconf.exists():
+        body = kconf.read_text()
+        if "include colors.conf" not in body:
+            backup_once(".config/kitty/kitty.conf", kconf)
+            kconf.write_text(body.rstrip("\n") + "\n\n# theme colors\ninclude colors.conf\n")
+
+    # hyprland borders
+    hconf = HOME / ".config/hypr/hyprland.lua"
+    if hconf.exists():
+        body = hconf.read_text()
+        new = re.sub(
+            r'(active_border\s*=\s*\{\s*colors\s*=\s*\{)[^}]*(\})',
+            lambda m: '%s"rgba(%see)", "rgba(%see)"%s' % (
+                m.group(1), "%02x%02x%02x" % T["ACCENT"], "%02x%02x%02x" % T["FG"], m.group(2)),
+            body)
+        new = re.sub(
+            r'(inactive_border\s*=\s*)"[^"]*"',
+            lambda m: '%s"rgba(%s99)"' % (m.group(1), "%02x%02x%02x" % T["SURFACE"]),
+            new)
+        if new != body:
+            backup_once(".config/hypr/hyprland.lua", hconf)
+            hconf.write_text(new)
+    return written
+
+
+def run(*cmd, **kw):
+    try:
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kw)
+    except FileNotFoundError:
+        pass
+
+
+def set_wallpaper(src):
+    WALL.parent.mkdir(parents=True, exist_ok=True)
+    Image.open(src).convert("RGB").save(WALL, "JPEG", quality=95)
+    WALLS.mkdir(parents=True, exist_ok=True)
+    try:
+        if Path(src).resolve().parent != WALLS.resolve():
+            shutil.copy2(src, WALLS / Path(src).name)
+    except OSError:
+        pass
+
+
+def reload_apps():
+    run("pkill", "swaybg")
+    try:
+        subprocess.Popen(["swaybg", "-i", str(WALL), "-m", "fill"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                         start_new_session=True)
+    except FileNotFoundError:
+        pass
+    run("pkill", "-SIGUSR2", "waybar")
+    run("makoctl", "reload")
+    run("pkill", "-SIGUSR1", "kitty")
+    run("notify-send", "theme", "recolored from your wallpaper")
+
+
+# ------------------------------------------------------------------- main --
+
+def list_walls():
+    if not WALLS.exists():
+        return []
+    return sorted(p for p in WALLS.iterdir() if p.suffix.lower() in IMG_EXT)
+
+
+def make_thumb(p):
+    THUMBS.mkdir(parents=True, exist_ok=True)
+    out = THUMBS / ("%s-%d.jpg" % (p.stem, int(p.stat().st_mtime)))
+    if not out.exists():
+        with Image.open(p) as im:
+            ImageOps.fit(im.convert("RGB"), (320, 180)).save(out, "JPEG", quality=85)
+    return out
+
+
+def pick():
+    files = list_walls()
+    if not files:
+        print("no wallpapers in %s" % WALLS)
+        sys.exit(1)
+    rows = "\n".join("%s\0icon\x1f%s" % (p.stem, make_thumb(p)) for p in files)
+    cmd = ["rofi", "-dmenu", "-i", "-show-icons", "-p", "wallpaper", "-format", "s",
+           "-me-select-entry", "", "-me-accept-entry", "MousePrimary"]
+    theme = HOME / ".config/rofi/wallpaper.rasi"
+    if theme.exists():
+        cmd += ["-theme", str(theme)]
+    try:
+        res = subprocess.run(cmd, input=rows, text=True, capture_output=True)
+    except FileNotFoundError:
+        print("rofi is not installed (sudo dnf install rofi)")
+        sys.exit(1)
+    choice = res.stdout.strip()
+    if not choice:
+        sys.exit(0)
+    for p in files:
+        if p.stem == choice:
+            return p
+    sys.exit(0)
+
+
+def cycle(step):
+    files = list_walls()
+    if not files:
+        print("no wallpapers in %s" % WALLS)
+        sys.exit(1)
+    cur = CURRENT.read_text().strip() if CURRENT.exists() else ""
+    names = [p.stem for p in files]
+    i = names.index(cur) if cur in names else (-1 if step > 0 else 0)
+    return files[(i + step) % len(files)]
+
+
+def acquire_lock():
+    """one recolor at a time, so mashing the key can't pile up runs"""
+    LOCK.parent.mkdir(parents=True, exist_ok=True)
+    f = open(LOCK, "w")
+    try:
+        fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        sys.exit(0)
+    return f
+
+
+def main(argv):
+    flags = {a for a in argv if a.startswith("--")}
+    args = [a for a in argv if not a.startswith("--")]
+    if not args:
+        print(__doc__)
+        return 1
+
+    lock = None
+    if "--dry-run" not in flags:
+        lock = acquire_lock()
+
+    if args[0] == "pick":
+        src = pick()
+    elif args[0] in ("next", "prev"):
+        src = cycle(1 if args[0] == "next" else -1)
+    elif args[0] == "random":
+        files = list_walls()
+        if not files:
+            print("no wallpapers in %s" % WALLS)
+            return 1
+        src = random.choice(files)
+    else:
+        src = Path(args[0]).expanduser()
+    if not src.exists():
+        print("not found: %s" % src)
+        return 1
+
+    T = build_palette(src)
+    try:
+        for name in ("ACCENT", "ACCENT_DARK", "BG", "SURFACE", "FG", "FG_DIM", "GREEN"):
+            print("%-12s %s" % (name, to_hex(T[name])))
+    except OSError:  # stdout closed (e.g. launched from a keybind): carry on
+        pass
+    if "--dry-run" in flags:
+        return 0
+
+    write_files(T)
+    set_wallpaper(src)
+    CURRENT.parent.mkdir(parents=True, exist_ok=True)
+    CURRENT.write_text(src.stem)
+    if "--no-apply" not in flags:
+        reload_apps()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
