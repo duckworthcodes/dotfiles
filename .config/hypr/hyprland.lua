@@ -330,3 +330,17 @@ hl.window_rule({
     move  = "20 monitor_h-120",
     float = true,
 })
+
+-- layer blur
+hl.layer_rule({ name = "blur-waybar", match = { namespace = "waybar" }, blur = true, ignore_alpha = 0.2 })
+hl.layer_rule({ name = "blur-fuzzel", match = { namespace = "launcher" }, blur = true, ignore_alpha = 0.2 })
+hl.layer_rule({ name = "blur-mako", match = { namespace = "notifications" }, blur = true, ignore_alpha = 0.2 })
+hl.layer_rule({ name = "blur-wlogout", match = { namespace = "logout_dialog" }, blur = true, ignore_alpha = 0.2 })
+
+hl.window_rule({ name = "glass-dolphin", match = { class = "^(org.kde.dolphin)$" }, opacity = "0.85 0.8" })
+
+hl.window_rule({ name = "glass-dolphin", match = { class = "^(org.kde.dolphin)$" }, opacity = "0.45 0.6" })
+
+hl.window_rule({ name = "glass-dolphin", match = { class = "^(org.kde.dolphin)$" }, opacity = "0.65 0.8" })
+
+hl.window_rule({ name = "glass-dolphin", match = { class = "^(org.kde.dolphin)$" }, opacity = "0.75 0.8" })
