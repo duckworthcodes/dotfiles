@@ -37,6 +37,7 @@ hl.on("hyprland.start", function ()
 
     -- notifications, bar
     hl.exec_cmd("mako")
+    hl.exec_cmd("hypridle")
     hl.exec_cmd("waybar")
 
     -- wallpaper: uses ~/Pictures/wallpaper.jpg if it exists, otherwise a solid dark color
