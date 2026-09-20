@@ -1,8 +1,8 @@
 font=JetBrainsMono Nerd Font 12
 background-color=#3e2c23ee
-text-color=#e8d2b0
-border-color=#d88c64
-progress-color=over #d88c64
+text-color=#e8b0d6
+border-color=#e48458
+progress-color=over #e48458
 border-size=2
 border-radius=14
 padding=14
@@ -17,10 +17,10 @@ default-timeout=6000
 ignore-timeout=0
 
 [urgency=low]
-border-color=#c3a579
+border-color=#c379ab
 default-timeout=4000
 
 [urgency=critical]
-border-color=#c46331
-background-color=#4d2b19f2
+border-color=#d25a22
+background-color=#4d2a19f2
 default-timeout=0

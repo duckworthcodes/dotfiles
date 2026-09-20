@@ -42,7 +42,7 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
     hl.exec_cmd("wl-paste --type image --watch cliphist store")
     hl.exec_cmd("hypridle")
-    hl.exec_cmd("waybar")
+    hl.exec_cmd("/home/bright_ninja/.local/bin/waybar-loop")
 
     -- wallpaper: uses ~/Pictures/wallpaper.jpg if it exists, otherwise a solid dark color
     hl.exec_cmd([=[sh -c 'f="$HOME/Pictures/wallpaper.jpg"; if [ -f "$f" ]; then exec swaybg -i "$f" -m fill; else exec swaybg -c 1e1e2e; fi']=])
@@ -79,7 +79,7 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(d88c64ee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            active_border   = { colors = {"rgba(e48458ee)", "rgba(e8b0d6ee)"}, angle = 45 },
             inactive_border = "rgba(3e2c2399)",
         },
 

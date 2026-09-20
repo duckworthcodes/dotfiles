@@ -693,6 +693,8 @@ element-text {
 """
 
 
+
+
 def qt_scheme_text():
     """KDE/Qt color scheme (Dolphin & co). Tokens are resolved by render()."""
     def sec(name, alt, normal, sel=False):
