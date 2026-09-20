@@ -79,8 +79,8 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(cba6f7ee)", "rgba(89b4faee)"}, angle = 45 },
-            inactive_border = "rgba(45475a99)",
+            active_border   = { colors = {"rgba(f94555ee)", "rgba(f0d5a8ee)"}, angle = 45 },
+            inactive_border = "rgba(3b222699)",
         },
 
         resize_on_border = true,
@@ -344,3 +344,5 @@ hl.window_rule({ name = "glass-dolphin", match = { class = "^(org.kde.dolphin)$"
 hl.window_rule({ name = "glass-dolphin", match = { class = "^(org.kde.dolphin)$" }, opacity = "0.65 0.8" })
 
 hl.window_rule({ name = "glass-dolphin", match = { class = "^(org.kde.dolphin)$" }, opacity = "0.75 0.8" })
+
+hl.window_rule({ name = "glass-firefox", match = { class = "^(org.mozilla.firefox)$" }, opacity = "0.85 0.8" })
