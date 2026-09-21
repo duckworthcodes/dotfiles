@@ -841,6 +841,11 @@ TEMPLATES[".config/swaync/style.css"] = """\
     color: @SURFACE@;
 }
 
+.widget-buttons-grid > flowbox > flowboxchild > button:checked {
+    background: @ACCENT@;
+    color: @SURFACE@;
+}
+
 .widget-volume,
 .widget-backlight {
     background: rgba(@SURFACE_RGB@, 0.7);
