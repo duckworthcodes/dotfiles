@@ -79,8 +79,8 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(647dd8ee)", "rgba(e8d2b0ee)"}, angle = 45 },
-            inactive_border = "rgba(23293e99)",
+            active_border   = { colors = {"rgba(f55e47ee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            inactive_border = "rgba(3e272399)",
         },
 
         resize_on_border = true,
@@ -101,7 +101,7 @@ hl.config({
             enabled      = true,
             range        = 20,
             render_power = 3,
-            color        = 0xee090c15,
+            color        = 0xee150b09,
         },
 
         blur = {
