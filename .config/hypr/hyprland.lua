@@ -36,7 +36,7 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE")
 
     -- notifications, bar
-    hl.exec_cmd("mako")
+    hl.exec_cmd("swaync")
     hl.exec_cmd("wlsunset -t 4000 -T 6500 -S 06:30 -s 19:00")
     hl.exec_cmd("wlsunset -t 4000 -T 6500 -S 06:30 -s 19:00")
     hl.exec_cmd("wl-paste --type text --watch cliphist store")
@@ -79,8 +79,8 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(e48458ee)", "rgba(e8b0d6ee)"}, angle = 45 },
-            inactive_border = "rgba(3e2c2399)",
+            active_border   = { colors = {"rgba(f55e47ee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            inactive_border = "rgba(3e272399)",
         },
 
         resize_on_border = true,
@@ -101,7 +101,7 @@ hl.config({
             enabled      = true,
             range        = 20,
             render_power = 3,
-            color        = 0xee150d09,
+            color        = 0xee150b09,
         },
 
         blur = {
@@ -219,7 +219,7 @@ hl.bind(mainMod .. " + E",      hl.dsp.exec_cmd(fileManager))
 hl.bind(mainMod .. " + Space",  hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + R",      hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + L",      hl.dsp.exec_cmd("hyprlock"))
-hl.bind(mainMod .. " + N",      hl.dsp.exec_cmd("makoctl dismiss"))
+hl.bind(mainMod .. " + N",      hl.dsp.exec_cmd("swaync-client -t -sw"))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/theme pick"))
 hl.bind(mainMod .. " + SHIFT + W", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/theme random"))
 hl.bind(mainMod .. " + bracketright", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/theme next"))
