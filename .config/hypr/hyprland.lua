@@ -79,8 +79,8 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(d88c64ee)", "rgba(e8d2b0ee)"}, angle = 45 },
-            inactive_border = "rgba(3e2c2399)",
+            active_border   = { colors = {"rgba(647dd8ee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            inactive_border = "rgba(23293e99)",
         },
 
         resize_on_border = true,
@@ -101,7 +101,7 @@ hl.config({
             enabled      = true,
             range        = 20,
             render_power = 3,
-            color        = 0xee150d09,
+            color        = 0xee090c15,
         },
 
         blur = {
@@ -354,3 +354,5 @@ hl.window_rule({ name = "glass-dolphin", match = { class = "^(org.kde.dolphin)$"
 hl.window_rule({ name = "glass-firefox", match = { class = "^(org.mozilla.firefox)$" }, opacity = "0.85 0.8" })
 
 hl.window_rule({ name = "glass-spotify", match = { class = "^(Spotify|spotify)$" }, opacity = "0.80 0.80" })
+
+hl.window_rule({ name = "glass-discord", match = { class = "^(discord|Discord|vesktop|Vesktop)$" }, opacity = "0.80 0.78" })
