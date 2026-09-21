@@ -8,7 +8,7 @@
 
 window#waybar {
     background: transparent;
-    color: #e8b0d6;
+    color: #e8d2b0;
 }
 
 #workspaces,
@@ -22,12 +22,12 @@ window#waybar {
 #memory,
 #battery,
 #custom-power {
-    background: rgba(62, 44, 35, 0.6);
-    color: #e8b0d6;
+    background: rgba(35, 35, 62, 0.6);
+    color: #e8d2b0;
     padding: 0 14px;
     margin: 4px 3px;
     border-radius: 12px;
-    border: 1px solid rgba(228, 132, 88, 0.25);
+    border: 1px solid rgba(66, 66, 250, 0.25);
 }
 
 #workspaces {
@@ -35,7 +35,7 @@ window#waybar {
 }
 
 #workspaces button {
-    color: #c379ab;
+    color: #c3a579;
     padding: 0 9px;
     margin: 3px 2px;
     border-radius: 9px;
@@ -43,23 +43,23 @@ window#waybar {
 }
 
 #workspaces button:hover {
-    background: rgba(228, 132, 88, 0.25);
-    color: #e8b0d6;
+    background: rgba(66, 66, 250, 0.25);
+    color: #e8d2b0;
 }
 
 #workspaces button.active {
-    background: #e48458;
-    color: #3e2c23;
+    background: #4242fa;
+    color: #23233e;
     font-weight: bold;
 }
 
 #workspaces button.urgent {
-    background: #d25a22;
-    color: #e8b0d6;
+    background: #0c0ce9;
+    color: #e8d2b0;
 }
 
 #window {
-    color: #c379ab;
+    color: #c3a579;
 }
 
 window#waybar.empty #window {
@@ -68,60 +68,60 @@ window#waybar.empty #window {
 }
 
 #mpris {
-    color: #e48458;
+    color: #4242fa;
 }
 
 #mpris.paused {
-    color: #c379ab;
-    border-color: rgba(195, 121, 171, 0.35);
+    color: #c3a579;
+    border-color: rgba(195, 165, 121, 0.35);
 }
 
 #clock {
-    color: #e48458;
+    color: #4242fa;
     font-weight: bold;
 }
 
-#pulseaudio { color: #e8b0d6; }
-#network    { color: #e8b0d6; }
-#cpu        { color: #c379ab; }
-#memory     { color: #c379ab; }
+#pulseaudio { color: #e8d2b0; }
+#network    { color: #e8d2b0; }
+#cpu        { color: #c3a579; }
+#memory     { color: #c3a579; }
 
 #pulseaudio.muted,
 #network.disconnected {
-    color: #e48458;
+    color: #4242fa;
 }
 
 #battery.charging,
 #battery.plugged {
-    color: #e8b0d6;
+    color: #e8d2b0;
 }
 
 #battery.warning:not(.charging) {
-    color: #c379ab;
-    border-color: rgba(195, 121, 171, 0.6);
+    color: #c3a579;
+    border-color: rgba(195, 165, 121, 0.6);
 }
 
 #battery.critical:not(.charging) {
-    background: #d25a22;
-    color: #e8b0d6;
+    background: #0c0ce9;
+    color: #e8d2b0;
 }
 
 #custom-power {
-    color: #e48458;
+    color: #4242fa;
     padding: 0 13px;
 }
 
 #custom-power:hover {
-    background: #e48458;
-    color: #3e2c23;
+    background: #4242fa;
+    color: #23233e;
 }
 
 tooltip {
-    background: rgba(62, 44, 35, 0.95);
-    border: 1px solid #e48458;
+    background: rgba(35, 35, 62, 0.95);
+    border: 1px solid #4242fa;
     border-radius: 10px;
 }
 
 tooltip label {
-    color: #e8b0d6;
+    color: #e8d2b0;
 }
