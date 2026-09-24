@@ -23,12 +23,12 @@ window#waybar {
 #battery,
 #custom-notification,
 #custom-power {
-    background: rgba(62, 44, 35, 0.6);
+    background: rgba(62, 35, 38, 0.6);
     color: #e8d2b0;
     padding: 0 14px;
     margin: 4px 3px;
     border-radius: 12px;
-    border: 1px solid rgba(216, 140, 100, 0.25);
+    border: 1px solid rgba(250, 66, 83, 0.25);
 }
 
 #workspaces {
@@ -44,18 +44,18 @@ window#waybar {
 }
 
 #workspaces button:hover {
-    background: rgba(216, 140, 100, 0.25);
+    background: rgba(250, 66, 83, 0.25);
     color: #e8d2b0;
 }
 
 #workspaces button.active {
-    background: #d88c64;
-    color: #3e2c23;
+    background: #fa4253;
+    color: #3e2326;
     font-weight: bold;
 }
 
 #workspaces button.urgent {
-    background: #c46331;
+    background: #e90c20;
     color: #e8d2b0;
 }
 
@@ -69,7 +69,7 @@ window#waybar.empty #window {
 }
 
 #mpris {
-    color: #d88c64;
+    color: #fa4253;
 }
 
 #mpris.paused {
@@ -78,7 +78,7 @@ window#waybar.empty #window {
 }
 
 #clock {
-    color: #d88c64;
+    color: #fa4253;
     font-weight: bold;
 }
 
@@ -89,7 +89,7 @@ window#waybar.empty #window {
 
 #pulseaudio.muted,
 #network.disconnected {
-    color: #d88c64;
+    color: #fa4253;
 }
 
 #battery.charging,
@@ -103,7 +103,7 @@ window#waybar.empty #window {
 }
 
 #battery.critical:not(.charging) {
-    background: #c46331;
+    background: #e90c20;
     color: #e8d2b0;
 }
 
@@ -114,7 +114,7 @@ window#waybar.empty #window {
 
 #custom-notification.notification,
 #custom-notification.inhibited-notification {
-    color: #d88c64;
+    color: #fa4253;
 }
 
 #custom-notification.dnd-none,
@@ -125,23 +125,23 @@ window#waybar.empty #window {
 }
 
 #custom-notification:hover {
-    background: #d88c64;
-    color: #3e2c23;
+    background: #fa4253;
+    color: #3e2326;
 }
 
 #custom-power {
-    color: #d88c64;
+    color: #fa4253;
     padding: 0 13px;
 }
 
 #custom-power:hover {
-    background: #d88c64;
-    color: #3e2c23;
+    background: #fa4253;
+    color: #3e2326;
 }
 
 tooltip {
-    background: rgba(62, 44, 35, 0.95);
-    border: 1px solid #d88c64;
+    background: rgba(62, 35, 38, 0.95);
+    border: 1px solid #fa4253;
     border-radius: 10px;
 }
 

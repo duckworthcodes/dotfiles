@@ -5,13 +5,13 @@
 }
 
 window {
-    background-color: rgba(42, 30, 24, 0.88);
+    background-color: rgba(42, 24, 26, 0.88);
 }
 
 button {
     color: #e8d2b0;
-    background-color: #3e2c23;
-    border: 2px solid rgba(216, 140, 100, 0.30);
+    background-color: #3e2326;
+    border: 2px solid rgba(250, 66, 83, 0.30);
     border-radius: 24px;
     margin: 20px;
     background-repeat: no-repeat;
@@ -22,8 +22,8 @@ button {
 
 button:focus,
 button:hover {
-    background-color: #d88c64;
-    color: #3e2c23;
+    background-color: #fa4253;
+    color: #3e2326;
     border-color: #e8d2b0;
 }
 

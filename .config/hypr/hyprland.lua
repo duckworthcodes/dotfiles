@@ -79,8 +79,8 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(d88c64ee)", "rgba(e8d2b0ee)"}, angle = 45 },
-            inactive_border = "rgba(3e2c2399)",
+            active_border   = { colors = {"rgba(fa4253ee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            inactive_border = "rgba(3e232699)",
         },
 
         resize_on_border = true,
@@ -101,7 +101,7 @@ hl.config({
             enabled      = true,
             range        = 20,
             render_power = 3,
-            color        = 0xee150d09,
+            color        = 0xee15090a,
         },
 
         blur = {
@@ -220,6 +220,7 @@ hl.bind(mainMod .. " + Space",  hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + R",      hl.dsp.exec_cmd(menu))
 hl.bind(mainMod .. " + L",      hl.dsp.exec_cmd("hyprlock"))
 hl.bind(mainMod .. " + N",      hl.dsp.exec_cmd("swaync-client -t -sw"))
+hl.bind(mainMod .. " + ALT + M", hl.dsp.exec_cmd("kitty --class rmpc -e /home/bright_ninja/.cargo/bin/rmpc"))
 hl.bind(mainMod .. " + SHIFT + F", hl.dsp.window.fullscreen({ mode = "maximized", action = "toggle" }))
 hl.bind(mainMod .. " + F", hl.dsp.window.fullscreen({ mode = "fullscreen", action = "toggle" }))
 hl.bind(mainMod .. " + W", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/theme pick"))
@@ -356,3 +357,5 @@ hl.window_rule({ name = "glass-firefox", match = { class = "^(org.mozilla.firefo
 hl.window_rule({ name = "glass-spotify", match = { class = "^(Spotify|spotify)$" }, opacity = "0.80 0.80" })
 
 hl.window_rule({ name = "glass-discord", match = { class = "^(discord|Discord|vesktop|Vesktop)$" }, opacity = "0.80 0.78" })
+
+hl.window_rule({ name = "float-rmpc", match = { class = "rmpc" }, float = true, size = "700 500", center = true })
