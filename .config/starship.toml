@@ -5,7 +5,7 @@ $directory$git_branch$git_status$python$nodejs$cmd_duration
 $character"""
 
 [directory]
-style = "bold #f55e47"
+style = "bold #4242fa"
 truncation_length = 3
 truncation_symbol = "…/"
 format = "[$path]($style)[$read_only]($read_only_style) "
@@ -35,5 +35,5 @@ style = "#c3a579"
 format = "[took $duration]($style) "
 
 [character]
-success_symbol = "[❯](bold #f55e47)"
+success_symbol = "[❯](bold #4242fa)"
 error_symbol = "[❯](bold #c3a579)"

@@ -45,7 +45,7 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("/home/bright_ninja/.local/bin/waybar-loop")
 
     -- wallpaper: uses ~/Pictures/wallpaper.jpg if it exists, otherwise a solid dark color
-    hl.exec_cmd("swww-daemon && swww img ~/Pictures/wallpaper.jpg")
+    hl.exec_cmd("/home/bright_ninja/.local/bin/wallpaper-start")
 
     -- network tray icon
     hl.exec_cmd("nm-applet --indicator")
@@ -79,8 +79,8 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(f55e47ee)", "rgba(e8d2b0ee)"}, angle = 45 },
-            inactive_border = "rgba(3e272399)",
+            active_border   = { colors = {"rgba(4242faee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            inactive_border = "rgba(23233e99)",
         },
 
         resize_on_border = true,
@@ -101,7 +101,7 @@ hl.config({
             enabled      = true,
             range        = 20,
             render_power = 3,
-            color        = 0xee150b09,
+            color        = 0xee090915,
         },
 
         blur = {
