@@ -11,15 +11,18 @@ Options: --no-apply  write the files but don't reload apps or set the wallpaper
 """
 import colorsys
 import fcntl
+import math
 import os
 import random
 import re
 import shutil
+import signal
 import subprocess
 import sys
+import time
 from pathlib import Path
 
-from PIL import Image, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 HOME = Path(os.environ.get("HOME", str(Path.home())))
 WALLS = HOME / "Pictures" / "MyWalls"
@@ -29,6 +32,7 @@ THUMBS = HOME / ".cache" / "theme" / "thumbs"
 CURRENT = HOME / ".cache" / "theme" / "current"
 LOCK = HOME / ".cache" / "theme" / "lock"
 SCHEME_STATE = HOME / ".cache" / "theme" / "scheme"
+TRANSITION_GIF = HOME / ".cache" / "theme" / "transition.gif"
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 
 
@@ -1110,6 +1114,728 @@ body {
 """
 
 
+TEMPLATES[".config/theme/out/sddm/Main.qml"] = """\
+import QtQuick
+import QtQuick.Controls
+
+Rectangle {
+    id: root
+    width: 1920
+    height: 1080
+    color: config.bg
+
+    property string ui: config.font
+
+    Image {
+        anchors.fill: parent
+        source: config.background
+        fillMode: Image.PreserveAspectCrop
+    }
+
+    // dim the wallpaper a little so the text always reads
+    Rectangle {
+        anchors.fill: parent
+        color: config.dim
+    }
+
+    // ---------- clock ----------
+    Column {
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: parent.height * 0.14
+        spacing: 2
+
+        Text {
+            id: timeText
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: config.fg
+            font.family: root.ui
+            font.pixelSize: 128
+            font.bold: true
+            text: Qt.formatTime(new Date(), "hh:mm")
+        }
+
+        Text {
+            id: dateText
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: config.fg
+            font.family: root.ui
+            font.pixelSize: 22
+            text: Qt.formatDate(new Date(), "dddd, d MMMM")
+        }
+    }
+
+    Timer {
+        interval: 1000
+        running: true
+        repeat: true
+        onTriggered: {
+            var d = new Date()
+            timeText.text = Qt.formatTime(d, "hh:mm")
+            dateText.text = Qt.formatDate(d, "dddd, d MMMM")
+        }
+    }
+
+    // ---------- login card ----------
+    Rectangle {
+        id: card
+        width: 420
+        height: cardColumn.implicitHeight + 56
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: parent.height * 0.44
+        radius: 22
+        color: config.card
+        border.color: config.accent
+        border.width: 2
+
+        Column {
+            id: cardColumn
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.margins: 28
+            spacing: 14
+
+            TextField {
+                id: userField
+                width: parent.width
+                height: 46
+                text: userModel.lastUser
+                placeholderText: "user"
+                color: config.fg
+                placeholderTextColor: config.fgdim
+                font.family: root.ui
+                font.pixelSize: 16
+                leftPadding: 16
+                selectByMouse: true
+                background: Rectangle {
+                    color: config.bg
+                    radius: 12
+                    border.width: 1
+                    border.color: userField.activeFocus ? config.accent : config.border
+                }
+                KeyNavigation.tab: passField
+                onAccepted: passField.forceActiveFocus()
+            }
+
+            TextField {
+                id: passField
+                width: parent.width
+                height: 46
+                echoMode: TextInput.Password
+                placeholderText: "password"
+                color: config.fg
+                placeholderTextColor: config.fgdim
+                font.family: root.ui
+                font.pixelSize: 16
+                leftPadding: 16
+                background: Rectangle {
+                    color: config.bg
+                    radius: 12
+                    border.width: 1
+                    border.color: passField.activeFocus ? config.accent : config.border
+                }
+                KeyNavigation.tab: sessionBox
+                onAccepted: root.doLogin()
+            }
+
+            ComboBox {
+                id: sessionBox
+                width: parent.width
+                height: 42
+                model: sessionModel
+                textRole: "name"
+                currentIndex: sessionModel.lastIndex
+                font.family: root.ui
+                font.pixelSize: 14
+                KeyNavigation.tab: loginButton
+
+                background: Rectangle {
+                    color: config.bg
+                    radius: 12
+                    border.width: 1
+                    border.color: config.border
+                }
+                contentItem: Text {
+                    leftPadding: 16
+                    text: sessionBox.displayText
+                    color: config.fgdim
+                    font: sessionBox.font
+                    verticalAlignment: Text.AlignVCenter
+                    elide: Text.ElideRight
+                }
+                delegate: ItemDelegate {
+                    width: sessionBox.width
+                    highlighted: sessionBox.highlightedIndex === index
+                    contentItem: Text {
+                        text: model.name
+                        color: parent.highlighted ? config.surface : config.fg
+                        font: sessionBox.font
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    background: Rectangle {
+                        color: parent.highlighted ? config.accent : config.surface
+                    }
+                }
+                popup: Popup {
+                    y: sessionBox.height + 4
+                    width: sessionBox.width
+                    implicitHeight: contentItem.implicitHeight
+                    padding: 1
+                    contentItem: ListView {
+                        clip: true
+                        implicitHeight: contentHeight
+                        model: sessionBox.popup.visible ? sessionBox.delegateModel : null
+                        currentIndex: sessionBox.highlightedIndex
+                    }
+                    background: Rectangle {
+                        color: config.surface
+                        radius: 10
+                        border.color: config.border
+                    }
+                }
+            }
+
+            Text {
+                id: errorText
+                width: parent.width
+                horizontalAlignment: Text.AlignHCenter
+                color: config.error
+                font.family: root.ui
+                font.pixelSize: 14
+                text: ""
+                visible: text !== ""
+            }
+
+            Button {
+                id: loginButton
+                width: parent.width
+                height: 46
+                text: "log in"
+                font.family: root.ui
+                font.pixelSize: 16
+                font.bold: true
+                contentItem: Text {
+                    text: loginButton.text
+                    font: loginButton.font
+                    color: config.surface
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                background: Rectangle {
+                    radius: 12
+                    color: loginButton.down || loginButton.hovered ? config.accentlight : config.accent
+                }
+                KeyNavigation.tab: userField
+                onClicked: root.doLogin()
+            }
+        }
+    }
+
+    // ---------- power buttons ----------
+    Row {
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.margins: 32
+        spacing: 12
+
+        Repeater {
+            model: [
+                { label: "suspend", ok: sddm.canSuspend, act: 0 },
+                { label: "reboot", ok: sddm.canReboot, act: 1 },
+                { label: "shutdown", ok: sddm.canPowerOff, act: 2 }
+            ]
+            delegate: Rectangle {
+                visible: modelData.ok
+                width: powerLabel.implicitWidth + 32
+                height: 38
+                radius: 12
+                color: powerArea.containsMouse ? config.accent : config.card
+                border.color: config.border
+                border.width: 1
+                Text {
+                    id: powerLabel
+                    anchors.centerIn: parent
+                    text: modelData.label
+                    color: powerArea.containsMouse ? config.surface : config.fg
+                    font.family: root.ui
+                    font.pixelSize: 14
+                }
+                MouseArea {
+                    id: powerArea
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    onClicked: {
+                        if (modelData.act === 0) sddm.suspend()
+                        else if (modelData.act === 1) sddm.reboot()
+                        else sddm.powerOff()
+                    }
+                }
+            }
+        }
+    }
+
+    function doLogin() {
+        errorText.text = ""
+        sddm.login(userField.text, passField.text, sessionBox.currentIndex)
+    }
+
+    Connections {
+        target: sddm
+        function onLoginFailed() {
+            errorText.text = "wrong password"
+            passField.text = ""
+            passField.forceActiveFocus()
+        }
+    }
+
+    Component.onCompleted: {
+        if (userField.text === "")
+            userField.forceActiveFocus()
+        else
+            passField.forceActiveFocus()
+    }
+}
+"""
+
+TEMPLATES[".config/theme/out/sddm/metadata.desktop"] = """\
+[SddmGreeterTheme]
+Name=Wallpaper
+Description=Login screen recolored from your wallpaper (generated by theme)
+Author=theme
+Version=1.0
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+Theme-Id=wallpaper
+Theme-API=2.0
+QtVersion=6
+"""
+
+TEMPLATES[".config/theme/out/sddm/theme.conf"] = """\
+[General]
+background=background.jpg
+font=JetBrainsMono Nerd Font
+bg="@BG@"
+dim="#8a@BG_HEX@"
+card="#e6@SURFACE_HEX@"
+surface="@SURFACE@"
+border="@SURFACE_HI@"
+fg="@FG@"
+fgdim="@FG_DIM@"
+accent="@ACCENT@"
+accentlight="@ACCENT_LIGHT@"
+error="@ACCENT_LIGHT@"
+"""
+
+
+TEMPLATES[".config/rmpc/theme.ron"] = """\
+#![enable(implicit_some)]
+#![enable(unwrap_newtypes)]
+#![enable(unwrap_variant_newtypes)]
+(
+    default_album_art_path: None,
+    format_tag_separator: " | ",
+    browser_column_widths: [20, 38, 42],
+    background_color: None,
+    text_color: "#@FG_HEX@",
+    header_background_color: None,
+    modal_background_color: "#@SURFACE_HEX@",
+    modal_backdrop: false,
+    preview_label_style: (fg: "#@FG_DIM_HEX@"),
+    preview_metadata_group_style: (fg: "#@ACCENT_HEX@", modifiers: "Bold"),
+    highlighted_item_style: (fg: "#@ACCENT_LIGHT_HEX@", modifiers: "Bold"),
+    current_item_style: (fg: "#@SURFACE_HEX@", bg: "#@ACCENT_HEX@", modifiers: "Bold"),
+    borders_style: (fg: "#@BORDER_HEX@"),
+    highlight_border_style: (fg: "#@ACCENT_HEX@"),
+    symbols: (
+        song: "S",
+        dir: "D",
+        playlist: "P",
+        marker: "M",
+        ellipsis: "...",
+        song_style: None,
+        dir_style: None,
+        playlist_style: None,
+    ),
+    level_styles: (
+        info: (fg: "#@BLUE_BRIGHT_HEX@", bg: "#@BG_HEX@"),
+        warn: (fg: "#@YELLOW_BRIGHT_HEX@", bg: "#@BG_HEX@"),
+        error: (fg: "#@ACCENT_DARK_HEX@", bg: "#@BG_HEX@"),
+        debug: (fg: "#@GREEN_BRIGHT_HEX@", bg: "#@BG_HEX@"),
+        trace: (fg: "#@MAGENTA_BRIGHT_HEX@", bg: "#@BG_HEX@"),
+    ),
+    progress_bar: (
+        symbols: ["█", "█", "█", " ", "█"],
+        track_style: (fg: "#@SURFACE_HI_HEX@"),
+        elapsed_style: (fg: "#@ACCENT_HEX@"),
+        thumb_style: (fg: "#@ACCENT_LIGHT_HEX@"),
+        use_track_when_empty: true,
+    ),
+    scrollbar: (
+        symbols: ["│", "█", "▲", "▼"],
+        track_style: (),
+        ends_style: (),
+        thumb_style: (fg: "#@ACCENT_HEX@"),
+    ),
+    tab_bar: (
+        active_style: (fg: "#@SURFACE_HEX@", bg: "#@ACCENT_HEX@", modifiers: "Bold"),
+        inactive_style: (fg: "#@FG_DIM_HEX@"),
+    ),
+    lyrics: (
+        timestamp: false
+    ),
+    browser_song_format: [
+        (
+            kind: Group([
+                (kind: Property(Track)),
+                (kind: Text(" ")),
+            ])
+        ),
+        (
+            kind: Group([
+                (kind: Property(Artist)),
+                (kind: Text(" - ")),
+                (kind: Property(Title)),
+            ]),
+            default: (kind: Property(Filename))
+        ),
+    ],
+    song_table_format: [
+        (
+            prop: (kind: Property(Artist),
+                default: (kind: Text("Unknown"))
+            ),
+            label_prop: (kind: Text("Artist")),
+            width: "20%",
+        ),
+        (
+            prop: (kind: Property(Title),
+                default: (kind: Text("Unknown"))
+            ),
+            label_prop: (kind: Text("Title")),
+            width: "35%",
+        ),
+        (
+            prop: (kind: Property(Album), style: (fg: "#@FG_HEX@"),
+                default: (kind: Text("Unknown Album"), style: (fg: "#@FG_HEX@"))
+            ),
+            label_prop: (kind: Text("Album")),
+            width: "30%",
+        ),
+        (
+            prop: (kind: Property(Duration),
+                default: (kind: Text("-"))
+            ),
+            label_prop: (kind: Text("Duration")),
+            width: "15%",
+            alignment: Right,
+        ),
+    ],
+    layout: Split(
+        direction: Vertical,
+        panes: [
+            (
+                size: "4",
+                pane: Split(
+                    direction: Horizontal,
+                    panes: [
+                        (
+                            size: "35",
+                            borders: "LEFT | TOP | BOTTOM",
+                            border_symbols: Inherited(parent: Rounded, bottom_left: "├"),
+                            pane: Component("header_left")
+                        ),
+                        (
+                            size: "100%",
+                            borders: "ALL",
+                            border_symbols: Inherited(parent: Rounded, top_left: "┬", top_right: "┬", bottom_left: "┴", bottom_right: "┴"),
+                            pane: Component("header_center")
+                        ),
+                        (
+                            size: "35",
+                            borders: "RIGHT | TOP | BOTTOM",
+                            border_symbols: Inherited(parent: Rounded, bottom_right: "┤"),
+                            pane: Component("header_right")
+                        ),
+                    ]
+                )
+            ),
+            (
+                pane: Pane(Tabs),
+                borders: "RIGHT | LEFT | BOTTOM",
+                border_symbols: Rounded,
+                size: "2",
+            ),
+            (
+                pane: Pane(TabContent),
+                size: "100%",
+            ),
+            (
+                size: "3",
+                pane: Split(
+                    direction: Horizontal,
+                    panes: [
+                        (
+                            size: "12",
+                            borders: "ALL",
+                            border_symbols: Inherited(parent: Rounded, top_right: "┬", bottom_right: "┴"),
+                            pane: Component("input_mode")
+                        ),
+                        (
+                            size: "100%",
+                            borders: "TOP | BOTTOM | RIGHT",
+                            border_symbols: Rounded,
+                            border_title: [(kind: Text(" ")), (kind: Property(Status(QueueLength()))), (kind: Text(" songs / ")), (kind: Property(Status(QueueTimeTotal()))), (kind: Text(" total time "))],
+                            border_title_alignment: Right,
+                            pane: Component("progress_bar"),
+                        ),
+                    ]
+                ),
+            ),
+        ],
+    ),
+    components: {
+        "state": Pane(Property(
+            content: [
+                (kind: Text("["), style: (fg: "#@ACCENT_HEX@", modifiers: "Bold")),
+                (kind: Property(Status(StateV2( ))), style: (fg: "#@ACCENT_HEX@", modifiers: "Bold")),
+                (kind: Text("]"), style: (fg: "#@ACCENT_HEX@", modifiers: "Bold")),
+            ], align: Left,
+        )),
+        "title": Pane(Property(
+            content: [
+                (kind: Property(Song(Title)), style: (modifiers: "Bold"),
+                    default: (kind: Text("No Song"), style: (modifiers: "Bold"))),
+            ], align: Center, scroll_speed: 1
+        )),
+        "volume": Split(
+            direction: Horizontal,
+            panes: [
+                (size: "1", pane: Pane(Property(content: [(kind: Text(""))]))),
+                (size: "100%", pane: Pane(Volume(kind: Slider(symbols: (filled: "─", thumb: "●", track: "─"))))),
+                (size: "3", pane: Pane(Property(content: [(kind: Property(Status(Volume)), style: (fg: "#@ACCENT_HEX@"))], align: Right))),
+                (size: "2", pane: Pane(Property(content: [(kind: Text("%"), style: (fg: "#@ACCENT_HEX@"))]))),
+            ]
+        ),
+        "elapsed_and_bitrate": Pane(Property(
+            content: [
+                (kind: Property(Status(Elapsed))), 
+                (kind: Text(" / ")), 
+                (kind: Property(Status(Duration))), 
+                (kind: Group([
+                    (kind: Text(" (")), 
+                    (kind: Property(Status(Bitrate))), 
+                    (kind: Text(" kbps)")),
+                ])),
+            ],
+            align: Left,
+        )),
+        "artist_and_album": Pane(Property(
+            content: [
+                (kind: Property(Song(Artist)), style: (fg: "#@ACCENT_HEX@", modifiers: "Bold"),
+                    default: (kind: Text("Unknown"), style: (fg: "#@ACCENT_HEX@", modifiers: "Bold"))),
+                (kind: Text(" - ")),
+                (kind: Property(Song(Album)), default: (kind: Text("Unknown Album"))),
+            ], align: Center, scroll_speed: 1
+        )),
+        "states": Split(
+            direction: Horizontal,
+            panes: [
+                (
+                    size: "1",
+                    pane: Pane(Empty())
+                ),
+                (
+                    size: "100%",
+                    pane: Pane(Property(content: [(kind: Property(Status(InputBuffer())), style: (fg: "#@ACCENT_HEX@"), align: Left)]))
+                ),
+                (
+                    size: "6",
+                    pane: Pane(Property(content: [
+                        (kind: Text("["), style: (fg: "#@FG_DIM_HEX@", modifiers: "Bold")),
+                        (kind: Property(Status(RepeatV2(
+                            on_label: "z",
+                            off_label: "z",
+                            on_style: (fg: "#@ACCENT_HEX@", modifiers: "Bold"),
+                            off_style: (fg: "#@FG_DIM_HEX@", modifiers: "Dim"),
+                        )))),
+                        (kind: Property(Status(RandomV2(
+                            on_label: "x",
+                            off_label: "x",
+                            on_style: (fg: "#@ACCENT_HEX@", modifiers: "Bold"),
+                            off_style: (fg: "#@FG_DIM_HEX@", modifiers: "Dim"),
+                        )))),
+                        (kind: Property(Status(ConsumeV2(
+                            on_label: "c",
+                            off_label: "c",
+                            oneshot_label: "c",
+                            on_style: (fg: "#@ACCENT_HEX@", modifiers: "Bold"),
+                            off_style: (fg: "#@FG_DIM_HEX@", modifiers: "Dim"),
+                            oneshot_style: (fg: "#@ACCENT_DARK_HEX@", modifiers: "Dim"),
+                        )))),
+                        (kind: Property(Status(SingleV2(
+                            on_label: "v",
+                            off_label: "v",
+                            oneshot_label: "v",
+                            on_style: (fg: "#@ACCENT_HEX@", modifiers: "Bold"),
+                            off_style: (fg: "#@FG_DIM_HEX@", modifiers: "Dim"),
+                            oneshot_style: (fg: "#@ACCENT_DARK_HEX@", modifiers: "Bold"),
+                        )))),
+                        (kind: Text("]"), style: (fg: "#@FG_DIM_HEX@", modifiers: "Bold")),
+                        ],
+                        align: Right
+                    ))
+                ),
+            ]
+        ),
+        "input_mode": Pane(Property(
+            content: [
+                (kind: Transform(Replace(content: (kind: Property(Status(InputMode()))), replacements: [
+                    (match: "Normal", replace: (kind: Text(" NORMAL "), style: (fg: "#@SURFACE_HEX@", bg: "#@ACCENT_HEX@"))),
+                    (match: "Insert", replace: (kind: Text(" INSERT "), style: (fg: "#@SURFACE_HEX@", bg: "#@GREEN_BRIGHT_HEX@"))),
+                ])))
+            ], align: Center
+        )),
+        "header_left": Split(
+            direction: Vertical,
+            panes: [
+                (size: "1", pane: Component("state")),
+                (size: "1", pane: Component("elapsed_and_bitrate")),
+            ]
+        ),
+        "header_center": Split(
+            direction: Vertical,
+            panes: [
+                (size: "1", pane: Component("title")),
+                (size: "1", pane: Component("artist_and_album")),
+            ]
+        ),
+        "header_right": Split(
+            direction: Vertical,
+            panes: [
+                (size: "1", pane: Component("volume")),
+                (size: "1", pane: Component("states")),
+            ]
+        ),
+        "progress_bar": Split(
+            direction: Horizontal,
+            panes: [
+                (
+                    size: "1",
+                    pane: Pane(Empty())
+                ),
+                (
+                    size: "100%",
+                    pane: Pane(ProgressBar)
+                ),
+                (
+                    size: "1",
+                    pane: Pane(Empty())
+                ),
+            ]
+        )
+    },
+)
+"""
+
+
+_TX = {}  # shared with forked worker processes (see make_transition_gif)
+
+
+def _tx_frame(i):
+    """Render frame i of the transition. Runs in a worker process."""
+    T = _TX
+    w, h = T["size"]
+    t = i / (T["frames"] - 1)
+    e = t * t * (3.0 - 2.0 * t)          # smoothstep: slow start, fast middle, soft landing
+
+    # the incoming wallpaper starts slightly zoomed in and settles to exactly 1.0x,
+    # so the last frame is identical to the real static wallpaper (no pop on hand-off)
+    zoom = 1.0 + T["zoom"] * (1.0 - t) ** 3
+    if zoom > 1.0003:
+        zw, zh = w / zoom, h / zoom
+        box = ((w - zw) / 2, (h - zh) / 2, (w + zw) / 2, (h + zh) / 2)
+        incoming = T["new"].resize((w, h), Image.Resampling.BICUBIC, box=box)
+    else:
+        incoming = T["new"]
+
+    r = T["max_r"] * e
+    if i == 0:
+        frame = T["old"]
+    elif r >= T["cover_r"]:
+        frame = incoming                  # circle already covers the screen
+    else:
+        mw, mh = T["mask_size"]
+        k = w / mw
+        m = Image.new("L", (mw, mh), 0)
+        rr = r / k
+        ImageDraw.Draw(m).ellipse((mw / 2 - rr, mh / 2 - rr, mw / 2 + rr, mh / 2 + rr), fill=255)
+        # the soft edge is blurry anyway, so build + blur the mask at 1/4 size and scale up:
+        # visually identical to a supersampled mask, ~50x cheaper
+        m = m.filter(ImageFilter.GaussianBlur(T["feather"])).resize((w, h), Image.Resampling.BICUBIC)
+        frame = Image.composite(incoming, T["old"], m)
+
+    return frame.quantize(palette=T["pal"], dither=Image.Dither.FLOYDSTEINBERG).tobytes()
+
+
+def make_transition_gif(old_path, new_path, out_path, size=(1920, 1080),
+                        frames=40, fps=50):
+    """Eased, feathered radial reveal from the old wallpaper to the new one.
+
+    Own implementation (no external transition tool). Design notes:
+      * palette is built from BOTH wallpapers -- frames are almost entirely pure old/new
+        pixels (only the soft edge is mixed), so a palette from a 50% blend shifts colors
+      * fps=50 is exactly 2 hundredths of a second per frame, which GIF stores losslessly
+        (60fps rounds to 10ms and plays back at the wrong speed)
+      * frames are rendered in parallel across CPU cores, with a serial fallback
+    """
+    w, h = size
+    old_img = Image.open(old_path).convert("RGB").resize(size, Image.Resampling.LANCZOS)
+    new_img = Image.open(new_path).convert("RGB").resize(size, Image.Resampling.LANCZOS)
+
+    sw, sh = w // 4, h // 4
+    montage = Image.new("RGB", (sw, sh * 2))
+    montage.paste(old_img.resize((sw, sh), Image.Resampling.BILINEAR), (0, 0))
+    montage.paste(new_img.resize((sw, sh), Image.Resampling.BILINEAR), (0, sh))
+    pal_img = montage.quantize(colors=256, method=Image.Quantize.MEDIANCUT)
+
+    mask_size = (w // 4, h // 4)
+    feather = 2.0
+    _TX.clear()
+    _TX.update(
+        size=size, frames=frames, old=old_img, new=new_img, pal=pal_img,
+        max_r=math.hypot(w, h) * 0.58, mask_size=mask_size, feather=feather, zoom=0.03,
+        cover_r=math.hypot(w, h) / 2 + 4 * feather * (w / mask_size[0]),
+    )
+
+    data = None
+    workers = min(os.cpu_count() or 1, 8)
+    if workers > 1:
+        try:
+            import multiprocessing as mp
+            with mp.get_context("fork").Pool(workers) as pool:
+                data = pool.map(_tx_frame, range(frames))
+        except Exception:
+            data = None
+    if data is None:
+        data = [_tx_frame(i) for i in range(frames)]
+
+    pal_bytes = pal_img.getpalette()
+    out_frames = []
+    for raw in data:
+        f = Image.frombytes("P", size, raw)
+        f.putpalette(pal_bytes)
+        out_frames.append(f)
+    out_frames.extend([out_frames[-1]] * int(fps * 0.6))  # hold on the final frame (free: merged in the GIF)
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_frames[0].save(
+        out_path, save_all=True, append_images=out_frames[1:],
+        duration=int(1000 / fps), loop=1, optimize=False,
+    )
+    return len(out_frames) / fps  # playback duration in seconds
+
+
 def qt_scheme_text():
     """KDE/Qt color scheme (Dolphin & co). Tokens are resolved by render()."""
     def sec(name, alt, normal, sel=False):
@@ -1313,23 +2039,98 @@ def run(*cmd, **kw):
 
 def set_wallpaper(src):
     WALL.parent.mkdir(parents=True, exist_ok=True)
+    old_copy = None
+    if WALL.exists():
+        old_copy = WALL.parent / ".theme-previous.jpg"
+        try:
+            shutil.copy2(WALL, old_copy)
+        except OSError:
+            old_copy = None
     Image.open(src).convert("RGB").save(WALL, "JPEG", quality=95)
+    sd = HOME / ".config/theme/out/sddm"
+    sd.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(WALL, sd / "background.jpg")
     WALLS.mkdir(parents=True, exist_ok=True)
     try:
         if Path(src).resolve().parent != WALLS.resolve():
             shutil.copy2(src, WALLS / Path(src).name)
     except OSError:
         pass
+    return old_copy
 
 
-def reload_apps(scheme=None):
-    run("pkill", "swaybg")
+def _pids(name):
+    try:
+        r = subprocess.run(["pgrep", "-x", name], capture_output=True, text=True)
+        return [int(x) for x in r.stdout.split()]
+    except (OSError, ValueError):
+        return []
+
+
+def start_static_wallpaper():
+    """Bring up the static wallpaper FIRST and retire the old one afterwards, so the
+    screen never goes blank in between. Returns pids of older swaybg instances."""
+    if shutil.which("swww"):
+        run("swww", "img", str(WALL), "--transition-type", "none")
+        return []
+    old = _pids("swaybg")
     try:
         subprocess.Popen(["swaybg", "-i", str(WALL), "-m", "fill"],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                          start_new_session=True)
     except FileNotFoundError:
-        pass
+        return []
+    return old
+
+
+def retire(pids):
+    for pid in pids:
+        try:
+            os.kill(pid, signal.SIGTERM)
+        except OSError:
+            pass
+
+
+def play_transition(old_wall, new_wall):
+    """Our own animated transition: generate the reveal GIF, play it once with
+    mpvpaper, then hand off to the static wallpaper. Returns True if it played."""
+    if not (shutil.which("mpvpaper") and old_wall.exists()):
+        return False
+    try:
+        duration = make_transition_gif(old_wall, new_wall, TRANSITION_GIF)
+    except Exception:
+        return False
+    run("pkill", "mpvpaper")
+    try:
+        subprocess.Popen(
+            ["mpvpaper", "-o", "--loop-file=no --keep-open=no --no-audio",
+             "*", str(TRANSITION_GIF)],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except FileNotFoundError:
+        return False
+    # the animation ends in a long hold on the final wallpaper; hand off during that hold.
+    time.sleep(min(duration, 4.0) + 0.1)
+    old = start_static_wallpaper()   # new static wallpaper up first (looks identical to the hold frame)
+    time.sleep(0.3)
+    retire(old)                      # then retire the old swaybg
+    run("pkill", "mpvpaper")         # and finally the animation layer
+    return True
+
+
+def reload_apps(scheme=None, old_wall=None, new_wall=None):
+    played = old_wall is not None and new_wall is not None and play_transition(old_wall, new_wall)
+    if not played:
+        if shutil.which("swww"):
+            run("swww", "img", str(WALL),
+                "--transition-type", "grow", "--transition-pos", "0.5,0.5",
+                "--transition-duration", "1.2", "--transition-fps", "60")
+        else:
+            old = start_static_wallpaper()
+            if old:
+                time.sleep(0.2)
+                retire(old)
     run("pkill", "-SIGUSR2", "waybar")
     run("makoctl", "reload")
     run("swaync-client", "-rs")
@@ -1444,11 +2245,11 @@ def main(argv):
         return 0
 
     scheme = write_files(T)
-    set_wallpaper(src)
+    old_wall = set_wallpaper(src)
     CURRENT.parent.mkdir(parents=True, exist_ok=True)
     CURRENT.write_text(src.stem)
     if "--no-apply" not in flags:
-        reload_apps(scheme)
+        reload_apps(scheme, old_wall, src)
     return 0
 
 

@@ -45,7 +45,7 @@ hl.on("hyprland.start", function ()
     hl.exec_cmd("/home/bright_ninja/.local/bin/waybar-loop")
 
     -- wallpaper: uses ~/Pictures/wallpaper.jpg if it exists, otherwise a solid dark color
-    hl.exec_cmd([=[sh -c 'f="$HOME/Pictures/wallpaper.jpg"; if [ -f "$f" ]; then exec swaybg -i "$f" -m fill; else exec swaybg -c 1e1e2e; fi']=])
+    hl.exec_cmd("swww-daemon && swww img ~/Pictures/wallpaper.jpg")
 
     -- network tray icon
     hl.exec_cmd("nm-applet --indicator")
@@ -79,8 +79,8 @@ hl.config({
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(fa4253ee)", "rgba(e8d2b0ee)"}, angle = 45 },
-            inactive_border = "rgba(3e232699)",
+            active_border   = { colors = {"rgba(f55e47ee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            inactive_border = "rgba(3e272399)",
         },
 
         resize_on_border = true,
@@ -101,7 +101,7 @@ hl.config({
             enabled      = true,
             range        = 20,
             render_power = 3,
-            color        = 0xee15090a,
+            color        = 0xee150b09,
         },
 
         blur = {
@@ -359,3 +359,9 @@ hl.window_rule({ name = "glass-spotify", match = { class = "^(Spotify|spotify)$"
 hl.window_rule({ name = "glass-discord", match = { class = "^(discord|Discord|vesktop|Vesktop)$" }, opacity = "0.80 0.78" })
 
 hl.window_rule({ name = "float-rmpc", match = { class = "rmpc" }, float = true, size = "700 500", center = true })
+
+hl.config({
+    xwayland = {
+        force_zero_scaling = true,
+    },
+})
