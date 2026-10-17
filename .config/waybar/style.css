@@ -22,13 +22,14 @@ window#waybar {
 #memory,
 #battery,
 #custom-notification,
+#custom-power-profile,
 #custom-power {
-    background: rgba(35, 35, 62, 0.6);
+    background: rgba(62, 47, 35, 0.6);
     color: #e8d2b0;
     padding: 0 14px;
     margin: 4px 3px;
     border-radius: 12px;
-    border: 1px solid rgba(66, 66, 250, 0.25);
+    border: 1px solid rgba(216, 151, 100, 0.25);
 }
 
 #workspaces {
@@ -44,18 +45,18 @@ window#waybar {
 }
 
 #workspaces button:hover {
-    background: rgba(66, 66, 250, 0.25);
+    background: rgba(216, 151, 100, 0.25);
     color: #e8d2b0;
 }
 
 #workspaces button.active {
-    background: #4242fa;
-    color: #23233e;
+    background: #d89764;
+    color: #3e2f23;
     font-weight: bold;
 }
 
 #workspaces button.urgent {
-    background: #0c0ce9;
+    background: #c47131;
     color: #e8d2b0;
 }
 
@@ -69,7 +70,7 @@ window#waybar.empty #window {
 }
 
 #mpris {
-    color: #4242fa;
+    color: #d89764;
 }
 
 #mpris.paused {
@@ -78,7 +79,7 @@ window#waybar.empty #window {
 }
 
 #clock {
-    color: #4242fa;
+    color: #d89764;
     font-weight: bold;
 }
 
@@ -89,7 +90,7 @@ window#waybar.empty #window {
 
 #pulseaudio.muted,
 #network.disconnected {
-    color: #4242fa;
+    color: #d89764;
 }
 
 #battery.charging,
@@ -103,7 +104,7 @@ window#waybar.empty #window {
 }
 
 #battery.critical:not(.charging) {
-    background: #0c0ce9;
+    background: #c47131;
     color: #e8d2b0;
 }
 
@@ -114,7 +115,7 @@ window#waybar.empty #window {
 
 #custom-notification.notification,
 #custom-notification.inhibited-notification {
-    color: #4242fa;
+    color: #d89764;
 }
 
 #custom-notification.dnd-none,
@@ -125,23 +126,43 @@ window#waybar.empty #window {
 }
 
 #custom-notification:hover {
-    background: #4242fa;
-    color: #23233e;
+    background: #d89764;
+    color: #3e2f23;
+}
+
+#custom-power-profile {
+    color: #c3a579;
+    padding: 0 13px;
+}
+
+#custom-power-profile.performance,
+#custom-power-profile.throughput-performance {
+    color: #d89764;
+}
+
+#custom-power-profile.powersave,
+#custom-power-profile.balanced-battery {
+    color: #81bb95;
+}
+
+#custom-power-profile:hover {
+    background: #d89764;
+    color: #3e2f23;
 }
 
 #custom-power {
-    color: #4242fa;
+    color: #d89764;
     padding: 0 13px;
 }
 
 #custom-power:hover {
-    background: #4242fa;
-    color: #23233e;
+    background: #d89764;
+    color: #3e2f23;
 }
 
 tooltip {
-    background: rgba(35, 35, 62, 0.95);
-    border: 1px solid #4242fa;
+    background: rgba(62, 47, 35, 0.95);
+    border: 1px solid #d89764;
     border-radius: 10px;
 }
 

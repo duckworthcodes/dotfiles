@@ -34,6 +34,8 @@ local menu        = "fuzzel"
 hl.on("hyprland.start", function ()
     -- let portals / systemd user services know about the Wayland session
     hl.exec_cmd("dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP XDG_SESSION_TYPE")
+        -- macOS-style bottom dock
+    hl.exec_cmd("nwg-dock --position bottom --alignment center --icon-size 44 --mb 8 --output eDP-1 --opacity 85 --autohide --launch-animation")
 
     -- notifications, bar
     hl.exec_cmd("swaync")
@@ -73,14 +75,15 @@ hl.env("QT_QPA_PLATFORMTHEME", "kde")
 
 hl.config({
     general = {
+        allow_tearing = true,
         gaps_in  = 6,
         gaps_out = 12,
 
         border_size = 2,
 
         col = {
-            active_border   = { colors = {"rgba(4242faee)", "rgba(e8d2b0ee)"}, angle = 45 },
-            inactive_border = "rgba(23233e99)",
+            active_border   = { colors = {"rgba(d89764ee)", "rgba(e8d2b0ee)"}, angle = 45 },
+            inactive_border = "rgba(3e2f2399)",
         },
 
         resize_on_border = true,
@@ -101,7 +104,7 @@ hl.config({
             enabled      = true,
             range        = 20,
             render_power = 3,
-            color        = 0xee090915,
+            color        = 0xee150f09,
         },
 
         blur = {
@@ -231,6 +234,11 @@ hl.bind("ALT + Print", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/shot-annot
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/clip-menu"))
 hl.bind(mainMod .. " + C", hl.dsp.exec_cmd("/home/bright_ninja/.local/bin/clip-menu"))
 hl.bind(mainMod .. " + X", hl.dsp.exec_cmd("pkill wlogout || wlogout -b 5 -T 320 -B 320"))
+-- Power profile toggle: Super + Shift + P
+hl.bind(
+    mainMod .. " + SHIFT + P",
+    hl.dsp.exec_cmd("bash -lc 'exec \"$HOME/.local/bin/power-mode\"'")
+)
 
 -- Windows
 hl.bind(mainMod .. " + Q", hl.dsp.window.close())
@@ -365,3 +373,7 @@ hl.config({
         force_zero_scaling = true,
     },
 })
+
+hl.window_rule({ name = "tear-cs2", match = { class = "^(cs2)$" }, immediate = true })
+
+hl.window_rule({ name = "glass-vscode", match = { class = "^(code|Code)$" }, opacity = "0.85 0.80" })

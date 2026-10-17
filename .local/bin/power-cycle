@@ -1,0 +1,16 @@
+#!/bin/sh
+# power-cycle: cycle through tuned power profiles, for a Waybar click target.
+# Needs the passwordless-sudo rule for tuned-adm (see the setup instructions) --
+# otherwise this will hang waiting for a password with nowhere to type it.
+
+cur=$(tuned-adm active | grep -oP '(?<=profile: ).*')
+
+case "$cur" in
+    balanced) next=throughput-performance ;;
+    throughput-performance) next=powersave ;;
+    powersave) next=balanced ;;
+    *) next=balanced ;;
+esac
+
+sudo tuned-adm profile "$next"
+notify-send "Power profile" "$next"
